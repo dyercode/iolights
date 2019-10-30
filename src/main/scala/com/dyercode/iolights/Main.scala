@@ -43,11 +43,10 @@ object Main extends IOApp {
       exit <- loop(light)
       _ <- Gpio.shutdown(gpio)
     } yield exit)
-      .handleErrorWith(_ => {
-        for {
-          _ <- IO(gpio.shutdown())
-          exit = ExitCode.Error
-        } yield exit
-      })
+      .handleErrorWith { _ =>
+        Gpio
+          .shutdown(gpio)
+          .map(_ => ExitCode.Error)
+      }
   }
 }
