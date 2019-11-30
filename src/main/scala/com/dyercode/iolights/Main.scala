@@ -1,30 +1,27 @@
 package com.dyercode.iolights
 
 import cats.effect.{ExitCode, IO, IOApp}
-import com.pi4j.io.gpio.{
-  GpioController,
-  GpioPinDigitalOutput,
-  PinState,
-  RaspiPin
-}
+import com.dyercode.pi4jse.Gpio
+import com.pi4j.io.gpio.{GpioPinDigitalOutput, PinState, RaspiPin}
+
+import scala.annotation.tailrec
 import scala.io.StdIn
 
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
     for {
       _ <- IO(println("Enter to toggle. 'exit' to exit"))
-      gpio <- Gpio.initialize()
-      exit <- program(gpio)
+      exit <- program
     } yield exit
   }
 
   def loop(pin: GpioPinDigitalOutput): IO[ExitCode] = {
-    def loop_inner(input: String): IO[ExitCode] = {
+    def loopInner(input: String): IO[ExitCode] = {
       if (input == "exit") {
-        IO(ExitCode.Success)
+        IO.pure(ExitCode.Success)
       } else {
         for {
-          _ <- IO(pin.toggle())
+          _ <- Gpio.toggle(pin)
           r <- loop(pin)
         } yield r
       }
@@ -33,20 +30,18 @@ object Main extends IOApp {
     for {
       _ <- IO(println(s"light is ${if (pin.isHigh) "Off" else "On"}"))
       input <- IO(StdIn.readLine())
-      result <- loop_inner(input)
+      result <- loopInner(input)
     } yield result
   }
 
-  def program(gpio: GpioController): IO[ExitCode] = {
+  def program: IO[ExitCode] = {
     (for {
-      light <- Gpio.provision(gpio, RaspiPin.GPIO_25, "light", PinState.LOW)
+      light <- Gpio.provisionOutput(RaspiPin.GPIO_25, "light", PinState.LOW)
       exit <- loop(light)
-      _ <- Gpio.shutdown(gpio)
+      _ <- Gpio.shutdown()
     } yield exit)
       .handleErrorWith { _ =>
-        Gpio
-          .shutdown(gpio)
-          .map(_ => ExitCode.Error)
+        Gpio.shutdown().map(_ => ExitCode.Error)
       }
   }
 }
