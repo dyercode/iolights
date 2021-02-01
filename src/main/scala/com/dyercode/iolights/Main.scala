@@ -1,10 +1,10 @@
 package com.dyercode.iolights
 
 import cats.effect.{ExitCode, IO, IOApp}
-import com.dyercode.pi4jse.Gpio
+import com.dyercode.iolights.LightStatus.{Off, On}
+import com.dyercode.pi4jsw.Gpio
 import com.pi4j.io.gpio.{GpioPinDigitalOutput, PinState, RaspiPin}
 
-import scala.annotation.tailrec
 import scala.io.StdIn
 
 object Main extends IOApp {
@@ -21,7 +21,7 @@ object Main extends IOApp {
         IO.pure(ExitCode.Success)
       } else {
         for {
-          _ <- Gpio.toggle(pin)
+          _ <- IO(pin.toggle())
           r <- loop(pin)
         } yield r
       }
@@ -36,9 +36,20 @@ object Main extends IOApp {
 
   def program: IO[ExitCode] = {
     (for {
-      light <- Gpio.provisionOutput(RaspiPin.GPIO_25, "light", PinState.LOW)
+      gpio <- Gpio.initialize()
+      light <- Gpio.provision(gpio, RaspiPin.GPIO_25, "light", PinState.LOW)
+      fiber <- Schedule
+        .loop(
+          None,
+          None,
+          {
+            case On  => IO({ println("ouch ON"); light.low() })
+            case Off => IO({ println("ouch OFF"); light.high() })
+          }
+        )
+        .start
       exit <- loop(light)
-      _ <- Gpio.shutdown()
+      _ <- Gpio.shutdown(gpio)
     } yield exit)
       .handleErrorWith { _ =>
         Gpio.shutdown().map(_ => ExitCode.Error)
