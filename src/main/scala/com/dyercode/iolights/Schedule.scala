@@ -1,6 +1,6 @@
 package com.dyercode.iolights
 
-import cats.effect.{Clock, IO, Timer}
+import cats.effect.{Clock, Timer}
 import cats.implicits._
 import cats.{Monad, Monoid, Semigroup}
 
@@ -42,7 +42,7 @@ object Schedule {
       scheduledChange <- Monad[F].pure(checkAllSchedules(a, b))
       _ <- scheduledChange match {
         case Some(a) => trigger(a)
-        case _       => Monad[F].pure(())
+        case _       => Monad[F].unit
       }
       _ <- timer.sleep(30.seconds)
       t <- now[F]
