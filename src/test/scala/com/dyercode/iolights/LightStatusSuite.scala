@@ -6,8 +6,8 @@ import com.dyercode.iolights.LightStatus.On
 import com.dyercode.iolights.Schedule.{checkScheduleItemTriggered, now}
 
 import java.time.LocalTime
-import scala.util.Success
 
+//noinspection ScalaStyle
 class LightStatusSuite extends munit.FunSuite {
   test("time") {
     implicit val clock: Clock[IO] = Clock.create[IO]

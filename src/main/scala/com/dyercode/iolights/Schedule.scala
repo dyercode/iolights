@@ -1,8 +1,8 @@
 package com.dyercode.iolights
 
-import cats.effect.{Clock, Timer}
+import cats.effect.{Clock, Concurrent, Sync, Timer}
 import cats.implicits._
-import cats.{Monad, Monoid, Semigroup}
+import cats.{Monoid, Semigroup}
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalTime, ZoneId}
@@ -21,7 +21,7 @@ object LightStatus {
 }
 
 object Schedule {
-  def loop[F[_]: Monad](
+  def loop[F[_]: Concurrent](
       a: Option[LocalTime],
       b: Option[LocalTime],
       trigger: LightStatus => F[_]
@@ -33,16 +33,16 @@ object Schedule {
     } yield ()
   }
 
-  def loop[F[_]: Monad](
+  def loop[F[_]: Sync](
       a: LocalTime,
       b: LocalTime,
       trigger: LightStatus => F[_]
   )(implicit timer: Timer[F]): F[_] = {
     for {
-      scheduledChange <- Monad[F].pure(checkAllSchedules(a, b))
+      scheduledChange <- Sync[F].delay(checkAllSchedules(a, b))
       _ <- scheduledChange match {
         case Some(a) => trigger(a)
-        case _       => Monad[F].unit
+        case _       => Sync[F].unit
       }
       _ <- timer.sleep(30.seconds)
       t <- now[F]
@@ -63,14 +63,20 @@ object Schedule {
     Try(LocalTime.parse(str, clockFormat))
   }
 
-  private def epochToTime(epoch: Long): LocalTime = {
-    Instant.ofEpochMilli(epoch).atZone(ZoneId.systemDefault()).toLocalTime
+  private def epochToTime[F[_]: Sync](epoch: F[Long]): F[LocalTime] = {
+    for {
+      e <- epoch
+      time <- Sync[F].delay(
+        Instant.ofEpochMilli(e).atZone(ZoneId.systemDefault()).toLocalTime
+      )
+    } yield time
   }
 
-  def now[F[_]: Monad](implicit clock: Clock[F]): F[LocalTime] = {
+  def now[F[_]: Sync](implicit clock: Clock[F]): F[LocalTime] = {
     for {
-      epoch <- clock.realTime(duration.MILLISECONDS)
-    } yield epochToTime(epoch)
+      epoch <- Sync[F].delay(clock.realTime(duration.MILLISECONDS))
+      time <- epochToTime(epoch)
+    } yield time
   }
 
   def checkScheduleItemTriggered(
@@ -99,10 +105,11 @@ object Schedule {
   }
 
   private val clockFormat = DateTimeFormatter.ofPattern("H:mm")
-  val scheduleHumanReadable: Map[String, LightStatus] = Map(
-    "3:20" -> LightStatus.On,
-    "6:20" -> LightStatus.Off
-  )
+  val scheduleHumanReadable: Map[String, LightStatus] =
+    Map[String, LightStatus](
+      "3:20" -> LightStatus.On,
+      "6:20" -> LightStatus.Off
+    )
 
   def schedule(
       humanReadable: Map[String, LightStatus]
