@@ -1,12 +1,24 @@
 package com.dyercode.iolights
 
-import cats.effect.{Concurrent, ExitCode, IO, IOApp, Sync, Timer}
-import cats.implicits._
 import cats.effect.implicits._
+import cats.effect.{
+  Async,
+  ConcurrentEffect,
+  ExitCode,
+  IO,
+  IOApp,
+  Resource,
+  Sync,
+  Timer
+}
+import cats.implicits._
 import com.dyercode.iolights.LightStatus.{Off, On}
 import com.dyercode.pi4jsw.Gpio
-import com.pi4j.io.gpio.{GpioPinDigitalOutput, PinState, RaspiPin}
+import com.pi4j.io.gpio.{GpioController, GpioPinDigitalOutput, RaspiPin}
+import pureconfig._
+import pureconfig.generic.auto._
 
+import scala.concurrent.ExecutionContext.global
 import scala.io.StdIn
 
 //noinspection ScalaStyle
@@ -14,7 +26,11 @@ object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
     for {
       _ <- IO(println("Enter to toggle. 'exit' to exit"))
-      exit <- program[IO]
+      conf <- IO(ConfigSource.default.load[ServerConf])
+      exit <- conf match {
+        case Right(sc) => program[IO](sc)
+        case Left(l)   => IO.raiseError(new RuntimeException(l.prettyPrint()))
+      }
     } yield exit
   }
 
@@ -43,25 +59,47 @@ object Main extends IOApp {
     } yield result
   }
 
-  def program[F[_]: Concurrent](implicit timer: Timer[F]): F[ExitCode] = {
-    (for {
-      gpio <- Gpio.initialize[F]
-      light <- Gpio.provision[F](gpio, RaspiPin.GPIO_25, "light", PinState.LOW)
-      _ <- Schedule
-        .loop[F](
-          None,
-          None,
-          {
-            case On  => Sync[F].delay({ println("ouch ON"); light.low() })
-            case Off => Sync[F].delay({ println("ouch OFF"); light.high() })
-          }
+  def makeGpioController[F[_]: Sync]: Resource[F, GpioController] = {
+    Resource.make(Gpio.initialize[F])(Gpio.shutdown[F])
+  }
+
+  def program[F[_]: Async: ConcurrentEffect](conf: ServerConf)(implicit
+      timer: Timer[F]
+  ): F[ExitCode] = {
+    makeGpioController[F].use { gpioController =>
+      for {
+        light <- Gpio.provision[F](
+          gpioController,
+          RaspiPin.GPIO_25,
+          "light",
+          None
         )
-        .start
-      exit <- loop(light)
-      _ <- Gpio.shutdown[F](gpio)
-    } yield exit)
-      .handleErrorWith { _ =>
-        Gpio.shutdown[F].map(_ => ExitCode.Error)
-      }
+        turnOn = Sync[F].delay {
+          println("ouch ON"); light.low()
+        }
+        turnOff = Sync[F].delay {
+          println("ouch OFF"); light.high()
+        }
+        switcher = { ls: LightStatus =>
+          ls match {
+            case On  => turnOn
+            case Off => turnOff
+          }
+        }
+        _ <- Schedule
+          .loop[F](switcher)
+          .start
+        listenFiber <- Remote
+          .serverBuilder[F](global, conf, switcher)
+          .use(_ => never)
+          .start
+        exit <- loop(light)
+        _ <- listenFiber.cancel
+      } yield exit
+    }
+  }
+
+  private def never[F[_]: Async: ConcurrentEffect]: F[Unit] = {
+    Async[F].async { (_: Either[Throwable, Unit] => Unit) => () }
   }
 }

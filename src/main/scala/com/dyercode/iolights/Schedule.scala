@@ -22,6 +22,12 @@ object LightStatus {
 
 object Schedule {
   def loop[F[_]: Concurrent](
+      trigger: LightStatus => F[_]
+  )(implicit timer: Timer[F]): F[_] = {
+    loop[F](None, None, trigger)
+  }
+
+  def loop[F[_]: Concurrent](
       a: Option[LocalTime],
       b: Option[LocalTime],
       trigger: LightStatus => F[_]
