@@ -1,17 +1,8 @@
 package com.dyercode.iolights
 
+import cats.effect._
 import cats.effect.implicits._
-import cats.effect.{
-  Async,
-  ConcurrentEffect,
-  ExitCode,
-  IO,
-  IOApp,
-  Resource,
-  Sync,
-  Timer
-}
-import cats.implicits._
+import cats.syntax.all._
 import com.dyercode.iolights.LightStatus.{Off, On}
 import com.dyercode.pi4jsw.Gpio
 import com.pi4j.io.gpio.{GpioController, GpioPinDigitalOutput, RaspiPin}
@@ -25,7 +16,7 @@ import scala.io.StdIn
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
     for {
-      _ <- IO(println("Enter to toggle. 'exit' to exit"))
+      _ <- IO.println("Enter to toggle. 'exit' to exit")
       conf <- IO(ConfigSource.default.load[ServerConf])
       exit <- conf match {
         case Right(sc) => program[IO](sc)
@@ -34,12 +25,8 @@ object Main extends IOApp {
     } yield exit
   }
 
-  def loop[F[_]: Sync](
-      pin: GpioPinDigitalOutput
-  )(implicit timer: Timer[F]): F[ExitCode] = {
-    def loopInner[G[_]: Sync](
-        input: String
-    )(implicit timer: Timer[G]): G[ExitCode] = {
+  def loop[F[_]: Sync](pin: GpioPinDigitalOutput): F[ExitCode] = {
+    def loopInner[G[_]: Sync](input: String): G[ExitCode] = {
       if (input == "exit") {
         Sync[G].delay(ExitCode.Success)
       } else {
@@ -63,9 +50,7 @@ object Main extends IOApp {
     Resource.make(Gpio.initialize[F])(Gpio.shutdown[F])
   }
 
-  def program[F[_]: Async: ConcurrentEffect](conf: ServerConf)(implicit
-      timer: Timer[F]
-  ): F[ExitCode] = {
+  def program[F[_]: Async](conf: ServerConf): F[ExitCode] = {
     makeGpioController[F].use { gpioController =>
       for {
         light <- Gpio.provision[F](
@@ -99,7 +84,7 @@ object Main extends IOApp {
     }
   }
 
-  private def never[F[_]: Async: ConcurrentEffect]: F[Unit] = {
-    Async[F].async { (_: Either[Throwable, Unit] => Unit) => () }
+  private def never[F[_]: Async]: F[Unit] = {
+    Async[F].async_ { (_: Either[Throwable, Unit] => Unit) => () }
   }
 }

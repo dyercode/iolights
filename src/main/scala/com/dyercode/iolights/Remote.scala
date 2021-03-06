@@ -1,13 +1,12 @@
 package com.dyercode.iolights
 
-import cats.data.Kleisli
 import cats.syntax.all._
 import cats.effect._
 import org.http4s._
+import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.implicits._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.{Router, Server}
-import org.http4s.server.blaze._
 
 import scala.concurrent.ExecutionContext
 
@@ -32,12 +31,12 @@ object Remote {
     "/" -> helloWorldService(switcher)
   ).orNotFound
 
-  def serverBuilder[F[_]: Sync: ConcurrentEffect](
-      concurrentEffect: ExecutionContext,
+  def serverBuilder[F[_]: Async](
+      executionContext: ExecutionContext,
       conf: ServerConf,
       switcher: Switcher[F]
-  )(implicit timer: Timer[F]): Resource[F, Server[F]] = {
-    BlazeServerBuilder[F](concurrentEffect)
+  ): Resource[F, Server] = {
+    BlazeServerBuilder[F](executionContext)
       .bindHttp(conf.port, conf.host)
       .withHttpApp(httpApp(switcher))
       .resource

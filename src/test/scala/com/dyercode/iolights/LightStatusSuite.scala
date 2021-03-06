@@ -4,13 +4,13 @@ import cats.effect._
 import cats.implicits._
 import com.dyercode.iolights.LightStatus.On
 import com.dyercode.iolights.Schedule.{checkScheduleItemTriggered, now}
+import cats.effect.unsafe.implicits.global
 
 import java.time.LocalTime
 
 //noinspection ScalaStyle
 class LightStatusSuite extends munit.FunSuite {
   test("time") {
-    implicit val clock: Clock[IO] = Clock.create[IO]
     val times = for {
       before <- now[IO]
       after <- now[IO]

@@ -1,12 +1,11 @@
 package com.dyercode.iolights
 
-import cats.effect.{Clock, Concurrent, Sync, Timer}
+import cats.effect.{Async, Sync, Temporal}
 import cats.implicits._
 import cats.{Monoid, Semigroup}
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalTime, ZoneId}
-import scala.concurrent.duration
 import scala.concurrent.duration._
 import scala.util.{Success, Try}
 
@@ -21,17 +20,17 @@ object LightStatus {
 }
 
 object Schedule {
-  def loop[F[_]: Concurrent](
+  def loop[F[_]: Async](
       trigger: LightStatus => F[_]
-  )(implicit timer: Timer[F]): F[_] = {
+  ): F[_] = {
     loop[F](None, None, trigger)
   }
 
-  def loop[F[_]: Concurrent](
+  def loop[F[_]: Async](
       a: Option[LocalTime],
       b: Option[LocalTime],
       trigger: LightStatus => F[_]
-  )(implicit timer: Timer[F]): F[_] = {
+  ): F[_] = {
     for {
       aa <- now[F]
       bb <- now[F]
@@ -39,18 +38,18 @@ object Schedule {
     } yield ()
   }
 
-  def loop[F[_]: Sync](
+  def loop[F[_]: Async](
       a: LocalTime,
       b: LocalTime,
       trigger: LightStatus => F[_]
-  )(implicit timer: Timer[F]): F[_] = {
+  ): F[_] = {
     for {
       scheduledChange <- Sync[F].delay(checkAllSchedules(a, b))
       _ <- scheduledChange match {
         case Some(a) => trigger(a)
-        case _       => Sync[F].unit
+        case _       => Async[F].unit
       }
-      _ <- timer.sleep(30.seconds)
+      _ <- Temporal[F].sleep(30.seconds)
       t <- now[F]
       _ <- loop(b, t, trigger)
     } yield ()
@@ -69,19 +68,16 @@ object Schedule {
     Try(LocalTime.parse(str, clockFormat))
   }
 
-  private def epochToTime[F[_]: Sync](epoch: F[Long]): F[LocalTime] = {
-    for {
-      e <- epoch
-      time <- Sync[F].delay(
-        Instant.ofEpochMilli(e).atZone(ZoneId.systemDefault()).toLocalTime
-      )
-    } yield time
+  private def instantToTime[F[_]: Sync](instant: Instant): F[LocalTime] = {
+    Sync[F].delay(
+      instant.atZone(ZoneId.systemDefault()).toLocalTime
+    )
   }
 
-  def now[F[_]: Sync](implicit clock: Clock[F]): F[LocalTime] = {
+  def now[F[_]: Sync]: F[LocalTime] = {
     for {
-      epoch <- Sync[F].delay(clock.realTime(duration.MILLISECONDS))
-      time <- epochToTime(epoch)
+      instant <- Sync[F].realTimeInstant
+      time <- instantToTime[F](instant)
     } yield time
   }
 
