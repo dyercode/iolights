@@ -1,48 +1,40 @@
 package com.dyercode.iolights
 
 import cats.effect._
-import cats.effect.implicits._
-import cats.syntax.all._
 import com.dyercode.iolights.LightStatus.{Off, On}
 import com.dyercode.pi4jsw.Gpio
 import com.pi4j.io.gpio.{GpioController, GpioPinDigitalOutput, RaspiPin}
 import pureconfig._
 import pureconfig.generic.auto._
 
-import scala.concurrent.ExecutionContext.global
-import scala.io.StdIn
-
-//noinspection ScalaStyle
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
     for {
       _ <- IO.println("Enter to toggle. 'exit' to exit")
       conf <- IO(ConfigSource.default.load[ServerConf])
       exit <- conf match {
-        case Right(sc) => program[IO](sc)
+        case Right(sc) => program(sc)
         case Left(l)   => IO.raiseError(new RuntimeException(l.prettyPrint()))
       }
     } yield exit
   }
 
-  def loop[F[_]: Sync](pin: GpioPinDigitalOutput): F[ExitCode] = {
-    def loopInner[G[_]: Sync](input: String): G[ExitCode] = {
+  def loop(pin: GpioPinDigitalOutput): IO[ExitCode] = {
+    def loopInner(input: String): IO[ExitCode] = {
       if (input == "exit") {
-        Sync[G].delay(ExitCode.Success)
+        IO(ExitCode.Success)
       } else {
         for {
-          _ <- Sync[G].delay(pin.toggle())
-          r <- loop[G](pin)
+          _ <- IO(pin.toggle())
+          r <- loop(pin)
         } yield r
       }
     }
 
     for {
-      _ <- Sync[F].delay(
-        println(s"light is ${if (pin.isHigh) "Off" else "On"}")
-      )
-      input <- Sync[F].delay(StdIn.readLine())
-      result <- loopInner[F](input)
+      _ <- IO.println(s"light is ${if (pin.isHigh) "Off" else "On"}")
+      input <- IO.readLine
+      result <- loopInner(input)
     } yield result
   }
 
@@ -50,21 +42,17 @@ object Main extends IOApp {
     Resource.make(Gpio.initialize[F])(Gpio.shutdown[F])
   }
 
-  def program[F[_]: Async](conf: ServerConf): F[ExitCode] = {
-    makeGpioController[F].use { gpioController =>
+  def program(conf: ServerConf): IO[ExitCode] = {
+    makeGpioController[IO].use { gpioController =>
       for {
-        light <- Gpio.provision[F](
+        light <- Gpio.provision[IO](
           gpioController,
           RaspiPin.GPIO_25,
           "light",
           None
         )
-        turnOn = Sync[F].delay {
-          println("ouch ON"); light.low()
-        }
-        turnOff = Sync[F].delay {
-          println("ouch OFF"); light.high()
-        }
+        turnOn = IO.println("ouch ON").flatMap(_ => IO(light.low()))
+        turnOff = IO.println("ouch OFF").flatMap(_ => IO(light.high()))
         switcher = { ls: LightStatus =>
           ls match {
             case On  => turnOn
@@ -72,19 +60,15 @@ object Main extends IOApp {
           }
         }
         _ <- Schedule
-          .loop[F](switcher)
+          .loop[IO](switcher)
           .start
         listenFiber <- Remote
-          .serverBuilder[F](global, conf, switcher)
-          .use(_ => never)
+          .serverBuilder[IO](conf, switcher)
+          .use(_ => IO.never)
           .start
         exit <- loop(light)
         _ <- listenFiber.cancel
       } yield exit
     }
-  }
-
-  private def never[F[_]: Async]: F[Unit] = {
-    Async[F].async_ { (_: Either[Throwable, Unit] => Unit) => () }
   }
 }

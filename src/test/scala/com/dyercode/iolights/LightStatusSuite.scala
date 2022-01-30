@@ -1,10 +1,10 @@
 package com.dyercode.iolights
 
 import cats.effect._
+import cats.effect.unsafe.implicits.global
 import cats.implicits._
 import com.dyercode.iolights.LightStatus.On
 import com.dyercode.iolights.Schedule.{checkScheduleItemTriggered, now}
-import cats.effect.unsafe.implicits.global
 
 import java.time.LocalTime
 
