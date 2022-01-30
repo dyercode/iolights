@@ -2,16 +2,18 @@ import sbt._
 import Keys._
 
 object Dependencies {
-  // Versions
-  val http4sVersion = "0.23.0-RC1"
+  object Versions {
+    val http4s = "0.23.7"
+  }
 
   // Libraries
-  val pi4s = "com.dyercode" %% "pi4j-sw" % "0.1-SNAPSHOT"
-  val catsEffect = "org.typelevel" %% "cats-effect" % "3.1.1"
-  val munit = "org.scalameta" %% "munit" % "0.7.26"
-  val http4sDsl = "org.http4s" %% "http4s-dsl" % http4sVersion
-  val http4sBlazeServer = "org.http4s" %% "http4s-blaze-server" % http4sVersion
-  val pureconfig = "com.github.pureconfig" %% "pureconfig" % "0.16.0"
+  val pi4s = "com.dyercode" %% "pi4j-sw" % "0.1.1-SNAPSHOT"
+  val catsEffect = "org.typelevel" %% "cats-effect" % "3.3.5"
+  val munit = "org.scalameta" %% "munit" % "0.7.29"
+  val http4sDsl = "org.http4s" %% "http4s-dsl" % Versions.http4s
+  val http4sBlazeServer =
+    "org.http4s" %% "http4s-blaze-server" % Versions.http4s
+  val pureconfig = "com.github.pureconfig" %% "pureconfig" % "0.17.1"
 
   // Projects
   val iolightsDependencies: Seq[ModuleID] = Seq(
