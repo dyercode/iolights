@@ -1,2 +1,2 @@
-addSbtPlugin("au.com.onegeek" % "sbt-dotenv" % "2.1.233")
+addSbtPlugin("nl.gn0s1s" % "sbt-dotenv" % "3.0.0")
 

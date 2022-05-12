@@ -1,22 +1,24 @@
 package com.dyercode.iolights
 
-import cats.effect._
-import cats.syntax.all._
-import org.http4s._
-import org.http4s.blaze.server.BlazeServerBuilder
-import org.http4s.dsl.Http4sDsl
-import org.http4s.implicits._
+import cats.*
+import cats.effect.*
+import cats.syntax.all.*
+import com.comcast.ip4s.{Host, Port}
+import org.http4s.*
+import org.http4s.dsl.io.*
+import org.http4s.ember.server.*
+import org.http4s.implicits.*
 import org.http4s.server.{Router, Server}
 
 object Remote {
-  type Switcher[F[_]] = LightStatus => F[_]
+  type Switcher = LightStatus => IO[_]
 
-  def helloWorldService[F[_]: Sync](switcher: Switcher[F]): HttpRoutes[F] = {
-    val dsl = Http4sDsl[F]
-    import dsl._
+  def helloWorldService(
+      switcher: Switcher
+  ): HttpRoutes[IO] = {
     HttpRoutes
       // idea, can take an actual message to schedule a time
-      .of[F] { case POST -> Root / "light" / name =>
+      .of[IO] { case POST -> Root / "light" / name =>
         name.toLowerCase match {
           case "on"  => Ok(switcher(LightStatus.On).map(_ => "turning on"))
           case "off" => Ok(switcher(LightStatus.Off).map(_ => "turning off"))
@@ -25,17 +27,19 @@ object Remote {
       }
   }
 
-  def httpApp[F[_]: Sync](switcher: Switcher[F]): HttpApp[F] = Router(
+  def httpApp(switcher: Switcher): HttpApp[IO] = Router(
     "/" -> helloWorldService(switcher)
   ).orNotFound
 
-  def serverBuilder[F[_]: Async](
+  def serverBuilder(
       conf: ServerConf,
-      switcher: Switcher[F]
-  ): Resource[F, Server] = {
-    BlazeServerBuilder[F]
-      .bindHttp(conf.port, conf.host)
+      switcher: Switcher,
+  ): Resource[IO, Server] = {
+    EmberServerBuilder
+      .default[IO]
+      .withHost(Host.fromString(conf.host).get)
+      .withPort(Port.fromInt(conf.port).get)
       .withHttpApp(httpApp(switcher))
-      .resource
+      .build
   }
 }
