@@ -13,7 +13,7 @@ import org.http4s.server.{Router, Server}
 object Remote {
   type Switcher = LightStatus => IO[_]
 
-  def helloWorldService(
+  def restService(
       switcher: Switcher
   ): HttpRoutes[IO] = {
     HttpRoutes
@@ -28,7 +28,7 @@ object Remote {
   }
 
   def httpApp(switcher: Switcher): HttpApp[IO] = Router(
-    "/" -> helloWorldService(switcher)
+    "/" -> restService(switcher)
   ).orNotFound
 
   def serverBuilder(

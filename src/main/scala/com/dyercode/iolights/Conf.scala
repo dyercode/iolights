@@ -14,7 +14,7 @@ case class Conf(
 )
 
 object Conf {
-  def load: IO[Conf] = IO(ConfigFactory.load).flatMap(load)
+  val load: IO[Conf] = IO(ConfigFactory.load).flatMap(load)
 
   def load(config: Config): IO[Conf] = for {
     server <- IO(config.getConfig("server"))

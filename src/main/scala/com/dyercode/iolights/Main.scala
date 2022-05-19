@@ -1,43 +1,39 @@
 package com.dyercode.iolights
 
-import cats.effect._
+import cats.effect.*
 import com.dyercode.iolights.LightStatus.{Off, On}
 import com.dyercode.pi4jsw.Gpio
 import com.pi4j.io.gpio.{GpioController, GpioPinDigitalOutput, RaspiPin}
 
-object Main extends IOApp {
-  override def run(args: List[String]): IO[ExitCode] = {
+object Main extends IOApp.Simple {
+  override def run: IO[Unit] =
     for {
       _ <- IO.println("Enter to toggle. 'exit' to exit")
       conf <- Conf.load
-      exit <- program(conf)
-    } yield exit
-  }
+      _ <- program(conf)
+    } yield ()
 
-  def loop(pin: GpioPinDigitalOutput): IO[ExitCode] = {
-    def loopInner(input: String): IO[ExitCode] = {
+  def loop(pin: GpioPinDigitalOutput): IO[Unit] = {
+    def loopInner(input: String): IO[Unit] = {
       if (input == "exit") {
-        IO(ExitCode.Success)
+        IO.unit
       } else {
-        for {
-          _ <- IO(pin.toggle())
-          r <- loop(pin)
-        } yield r
+        IO(pin.toggle())
+          .flatMap(_ => loop(pin))
       }
     }
 
     for {
-      _ <- IO.println(s"light is ${if (pin.isHigh) "Off" else "On"}")
+      _ <- IO.println(s"light is ${if pin.isHigh then "Off" else "On"}")
       input <- IO.readLine
       result <- loopInner(input)
     } yield result
   }
 
-  def makeGpioController[F[_]: Sync]: Resource[F, GpioController] = {
+  def makeGpioController[F[_]: Sync]: Resource[F, GpioController] =
     Resource.make(Gpio.initialize[F])(Gpio.shutdown[F])
-  }
 
-  def program(conf: Conf): IO[ExitCode] = {
+  def program(conf: Conf): IO[Unit] = {
     makeGpioController[IO].use { gpioController =>
       for {
         schedule <- IO(Schedule(conf))
@@ -60,9 +56,9 @@ object Main extends IOApp {
           .serverBuilder(conf.server, switcher)
           .use(_ => IO.never)
           .start
-        exit <- loop(light)
+        _ <- loop(light)
         _ <- listenFiber.cancel
-      } yield exit
+      } yield ()
     }
   }
 }
