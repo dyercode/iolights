@@ -3,12 +3,12 @@ import Keys._
 
 object Dependencies {
   object Versions {
-    val http4s = "0.23.11"
+    val http4s = "0.23.16"
     val munit = "0.7.29"
   }
 
   val pi4s = "com.dyercode" %% "pi4j-sw" % "0.1.1-SNAPSHOT"
-  val catsEffect = "org.typelevel" %% "cats-effect" % "3.3.11"
+  val catsEffect = "org.typelevel" %% "cats-effect" % "3.3.12"
   val munit = "org.scalameta" %% "munit" % Versions.munit
   val munitCheck = "org.scalameta" %% "munit-scalacheck" % Versions.munit
   val http4sDsl = "org.http4s" %% "http4s-dsl" % Versions.http4s
