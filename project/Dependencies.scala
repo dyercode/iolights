@@ -16,19 +16,16 @@ object Dependencies {
     "org.http4s" %% "http4s-blaze-server" % Versions.http4s
   val http4sEmberServer =
     "org.http4s" %% "http4s-ember-server" % Versions.http4s
-  val pureconfig = ("com.github.pureconfig" %% "pureconfig" % "0.17.1").cross(
-    CrossVersion.for3Use2_13
-  )
+  val pureconfig = ("com.github.pureconfig" %% "pureconfig-core" % "0.17.1")
   val csvReader = "com.github.tototoshi" %% "scala-csv" % "1.3.10"
-  val config = "com.typesafe" % "config" % "1.4.2"
 
   val iolightsDependencies: Seq[ModuleID] = Seq(
     pi4s,
     catsEffect,
     http4sDsl,
     http4sEmberServer,
-    config,
     csvReader,
+    pureconfig,
     munit % Test,
     munitCheck % Test,
   )

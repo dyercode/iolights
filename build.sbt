@@ -5,7 +5,7 @@ name := "iolights"
 // scalaVersion := "2.13.8"
 scalaVersion := "3.1.3"
 
-version := "0.2.2"
+version := "0.2.3-SNAPSHOT"
 
 libraryDependencies ++= iolightsDependencies
 

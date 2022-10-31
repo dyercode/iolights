@@ -2,6 +2,7 @@ package com.dyercode.iolights
 
 import cats.effect.unsafe.implicits.global
 import com.typesafe.config.ConfigFactory
+import pureconfig.ConfigSource
 
 class ConfSuite extends munit.FunSuite {
   val source: String = """server {
@@ -12,7 +13,7 @@ class ConfSuite extends munit.FunSuite {
                   """.stripMargin
 
   test("conf includes schedule file location") {
-    val conf = Conf.load(ConfigFactory.load(source)).unsafeRunSync()
+    val conf = Conf.load(ConfigSource.string(source)).unsafeRunSync()
     assertEquals(conf.scheduleFile, "schedule.csv")
   }
 }

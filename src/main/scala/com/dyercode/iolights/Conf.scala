@@ -1,26 +1,25 @@
 package com.dyercode.iolights
 
 import cats.effect.IO
-import com.typesafe.config.{Config, ConfigFactory}
+import pureconfig._
+import pureconfig.generic.derivation.default._
 
 case class ServerConf(
     host: String,
     port: Int,
-)
+) derives ConfigReader
 
 case class Conf(
     server: ServerConf,
     scheduleFile: String,
-)
+) derives ConfigReader
 
 object Conf {
-  val load: IO[Conf] = IO(ConfigFactory.load).flatMap(load)
+  def load: IO[Conf] = IO(ConfigSource.default).flatMap(load)
 
-  def load(config: Config): IO[Conf] = for {
-    server <- IO(config.getConfig("server"))
-    serverConf <- IO {
-      ServerConf(server.getString("host"), server.getInt("port"))
+  def load(config: ConfigObjectSource): IO[Conf] = IO.fromEither {
+    config.load[Conf].left.map { failures =>
+      java.lang.RuntimeException(failures.prettyPrint(2))
     }
-    scheduleFile <- IO(config.getString("schedule-file"))
-  } yield Conf(serverConf, scheduleFile)
+  }
 }
