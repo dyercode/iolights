@@ -14,13 +14,9 @@ object Main extends IOApp.Simple {
     } yield ()
 
   def loop(pin: GpioPinDigitalOutput): IO[Unit] = {
-    def loopInner(input: String): IO[Unit] = {
-      if (input == "exit") {
-        IO.unit
-      } else {
-        IO(pin.toggle())
-          .flatMap(_ => loop(pin))
-      }
+    def loopInner(input: String): IO[Unit] = input match {
+      case "exit" => IO.unit
+      case _      => IO(pin.toggle()).flatMap(_ => loop(pin))
     }
 
     for {

@@ -8,3 +8,4 @@ null
 project/metals.sbt
 project/project
 *.vim
+.direnv
