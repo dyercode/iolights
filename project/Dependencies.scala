@@ -7,7 +7,7 @@ object Dependencies {
     val munit = "0.7.29"
   }
 
-  val pi4s = "com.dyercode" %% "pi4j-sw" % "0.1.1-SNAPSHOT"
+  val pi4s = "com.dyercode" %% "pi4j-sw" % "0.1.2-SNAPSHOT"
   val catsEffect = "org.typelevel" %% "cats-effect" % "3.4.1"
   val munit = "org.scalameta" %% "munit" % Versions.munit
   val munitCheck = "org.scalameta" %% "munit-scalacheck" % Versions.munit

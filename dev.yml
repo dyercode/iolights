@@ -1,2 +1,3 @@
 commands:
   test: sbt test
+  release: sbt assembly
