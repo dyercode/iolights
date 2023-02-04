@@ -3,7 +3,7 @@ import Keys._
 
 object Dependencies {
   object Versions {
-    val http4s = "0.23.16"
+    val http4s = "0.23.18"
     val munit = "0.7.29"
   }
 
