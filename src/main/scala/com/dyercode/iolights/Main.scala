@@ -4,6 +4,7 @@ import cats.effect.*
 import com.dyercode.iolights.LightStatus.{Off, On}
 import com.dyercode.pi4jsw.Gpio
 import com.pi4j.io.gpio.{GpioController, GpioPinDigitalOutput, RaspiPin}
+import com.dyercode.pi4jsw.DigitalOutPin
 
 object Main extends IOApp.Simple {
   override def run: IO[Unit] =
@@ -13,14 +14,15 @@ object Main extends IOApp.Simple {
       _ <- program(conf)
     } yield ()
 
-  def loop(pin: GpioPinDigitalOutput): IO[Unit] = {
+  def loop(pin: DigitalOutPin[IO]): IO[Unit] = {
     def loopInner(input: String): IO[Unit] = input match {
       case "exit" => IO.unit
-      case _      => IO(pin.toggle()).flatMap(_ => loop(pin))
+      case _      => pin.toggle().flatMap(_ => loop(pin))
     }
 
     for {
-      _ <- IO.println(s"light is ${if pin.isHigh then "Off" else "On"}")
+      isHigh <- pin.isHigh()
+      _ <- IO.println(s"light is ${if isHigh then "Off" else "On"}")
       input <- IO.readLine
       result <- loopInner(input)
     } yield result
@@ -39,8 +41,8 @@ object Main extends IOApp.Simple {
           "light",
           None,
         )
-        turnOn = IO.println("ouch ON").flatMap(_ => IO(light.low()))
-        turnOff = IO.println("ouch OFF").flatMap(_ => IO(light.high()))
+        turnOn = IO.println("ouch ON").flatMap(_ => light.low())
+        turnOff = IO.println("ouch OFF").flatMap(_ => light.high())
         switcher = (_: LightStatus) match {
           case On  => turnOn
           case Off => turnOff
