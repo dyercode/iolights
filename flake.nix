@@ -14,7 +14,7 @@
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [
             sbt
-            dev.defaultPackage.${system}
+            dev.packages.${system}.default
           ];
 
           shellHook = ''
