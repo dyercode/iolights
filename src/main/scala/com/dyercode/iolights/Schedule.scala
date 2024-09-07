@@ -34,14 +34,12 @@ object LightStatus {
 }
 
 case class Schedule(config: Conf) {
-  def loop(trigger: LightStatus => IO[_]): IO[_] = {
-    loop(None, None, trigger)
-  }
+  def loop(trigger: LightStatus => IO[?]): IO[?] = loop(None, None, trigger)
 
   def loop(
       a: Option[LocalTime],
       b: Option[LocalTime],
-      trigger: LightStatus => IO[_],
+      trigger: LightStatus => IO[?],
   ): IO[Unit] = {
     for {
       aa <- Schedule.now[IO]
@@ -53,7 +51,7 @@ case class Schedule(config: Conf) {
   def loop(
       a: LocalTime,
       b: LocalTime,
-      trigger: LightStatus => IO[_],
+      trigger: LightStatus => IO[?],
   ): IO[Unit] = {
     for {
       s <- load

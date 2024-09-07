@@ -47,11 +47,19 @@ object Main extends IOApp.Simple {
           case On  => turnOn
           case Off => turnOff
         }
+        status = () => {
+          light
+            .isHigh()
+            .map {
+              case true  => LightStatus.Off
+              case false => LightStatus.On
+            }
+        }
         _ <- schedule
           .loop(switcher)
           .start
         listenFiber <- Remote
-          .serverBuilder(conf.server, switcher)
+          .serverBuilder(conf.server, switcher, status)
           .use(_ => IO.never)
           .start
         _ <- loop(light)

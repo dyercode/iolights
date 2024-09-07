@@ -3,7 +3,7 @@ import Dependencies._
 name := "iolights"
 
 // scalaVersion := "2.13.8"
-scalaVersion := "3.4.2"
+scalaVersion := "3.5.0"
 
 version := "0.2.3-SNAPSHOT"
 
