@@ -14,39 +14,39 @@ import org.http4s.ember.server.*
 import org.http4s.implicits.*
 import org.http4s.server.{Router, Server}
 import org.http4s.circe.*
-// import
-// import org.http4s.circe.CirceEntityDecoder.*
+import org.http4s.circe.CirceEntityCodec.*
 
 object Remote {
   type Switcher = LightStatus => IO[?]
   type Status = () => IO[LightStatus]
 
   case class LightCommand(active: Boolean)
+
   object LightCommand {
     def fromLightStatus(status: LightStatus) = status match {
       case LightStatus.On  => LightCommand(true)
       case LightStatus.Off => LightCommand(false)
     }
-  }
 
-  implicit val commandDecoder: EntityDecoder[IO, LightCommand] =
-    jsonOf[IO, LightCommand]
+    def toLightStatus(command: LightCommand) = LightStatus(command.active)
+  }
 
   def restService(
       switcher: Switcher,
       status: Status,
   ): HttpRoutes[IO] = {
+    def switchLight(lc: LightCommand): IO[String] = {
+      val ls = LightCommand.toLightStatus(lc)
+      switcher(ls).map(_ => s"turning ${ls}")
+    }
+
     HttpRoutes
       // idea, can take an actual message to schedule a time
       .of[IO] {
         case req @ POST -> Root / "light" => {
           for {
             cmd <- req.as[LightCommand]
-            resp <- cmd.active match {
-              case true => Ok(switcher(LightStatus.On).map(_ => "turning on"))
-              case false =>
-                Ok(switcher(LightStatus.Off).map(_ => "turning off"))
-            }
+            resp <- Ok(switchLight(cmd))
           } yield resp
         }
         case POST -> Root / "light" / name =>
@@ -56,7 +56,10 @@ object Remote {
             case _     => BadRequest("go fish")
           }
         case GET -> Root / "light" =>
-          Ok(status().map(ls => LightCommand.fromLightStatus(ls).asJson))
+          Ok(
+            status()
+              .map(LightCommand.fromLightStatus(_).asJson)
+          )
       }
   }
 

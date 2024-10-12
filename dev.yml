@@ -1,3 +1,5 @@
 commands:
-  check: sbt test
+  check:
+    - sbt scalafmtCheckAll
+    - sbt test
   package: sbt assembly

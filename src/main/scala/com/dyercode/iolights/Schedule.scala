@@ -24,6 +24,8 @@ object LightStatus {
     case _     => None
   }
 
+  def apply(bool: Boolean): LightStatus = if bool then On else Off
+
   def unapply(ls: LightStatus): String = ls match {
     case LightStatus.On  => "on"
     case LightStatus.Off => "off"
